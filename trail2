@@ -1,0 +1,239 @@
+using Microsoft.AspNetCore.Mvc;
+using MySql.Data.MySqlClient;
+using Mysqlx.Crud;
+using Mysqlx.Datatypes;
+using System.Data;
+using System.Xml.Linq;
+using userWebApi.Models;
+
+namespace userWebApi.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class PersonController : ControllerBase
+    {
+        private readonly IDbConnection _dbConnection;
+
+        public PersonController(IDbConnection dbConnection)
+        {
+            _dbConnection = dbConnection;
+        }
+
+        [HttpGet]
+        public IActionResult GetAllPersons()
+        {
+            List<Person> persons = new List<Person>();
+            using var command = _dbConnection.CreateCommand();
+            command.CommandText = "SELECT * FROM details";
+
+            _dbConnection.Open();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                persons.Add(new Person
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    age = reader.GetInt32(2),
+                    salary = reader.GetFloat(3),
+                    rent = reader.GetFloat(4),
+                    city = reader.GetString(5),
+                });
+            }
+            _dbConnection.Close();
+
+            var statuscode = new
+            {
+                responsestatus = 200,
+                responsemessage = "All persons",
+                data = persons
+            };
+            return Ok(statuscode);
+        }
+
+
+
+        [HttpGet("{id}")]
+        public IActionResult GetPersonById(int id)
+        {
+            Person person = null;
+            using var command = _dbConnection.CreateCommand();
+            command.CommandText = "SELECT * FROM details WHERE Id = "+id+"";
+
+            _dbConnection.Open();
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                person = new Person
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    age = reader.GetInt32(2),
+                    salary = reader.GetFloat(3),
+                    rent = reader.GetFloat(4),
+                    city = reader.GetString(5),
+                };
+            }
+            _dbConnection.Close();
+            var statuscode = new
+            {
+                responsestatus = 200,
+                responsemessage = "All persons",
+                data = person
+            };
+            return Ok(statuscode);
+
+        }
+
+
+
+        [HttpPost]
+        public IActionResult AddPerson([FromBody] Person person)
+        {
+            using var command = _dbConnection.CreateCommand();
+            command.CommandText = "INSERT INTO details (Name, age, salary, rent, city) VALUES (@Name, @age, @salary, @rent, @city)";
+
+            var nameParam = command.CreateParameter();
+            nameParam.ParameterName = "@Name";
+            nameParam.Value = person.Name;
+            command.Parameters.Add(nameParam);
+
+            var ageParam = command.CreateParameter();
+            ageParam.ParameterName = "@age";
+            ageParam.Value = person.age;
+            command.Parameters.Add(ageParam);
+
+            var salaryParam = command.CreateParameter();
+            salaryParam.ParameterName ="@salary";
+            salaryParam.Value = person.salary;
+            command.Parameters.Add(salaryParam);
+
+
+            var rentParam = command.CreateParameter();
+            rentParam.ParameterName ="@rent";
+            rentParam.Value = person.rent;
+            command.Parameters.Add(rentParam);
+
+            var cityParam = command.CreateParameter();
+            cityParam.ParameterName = "@city";
+            cityParam.Value = person.city;
+            command.Parameters.Add(cityParam);
+
+            _dbConnection.Open();
+            var rowsAffected = command.ExecuteNonQuery();
+            _dbConnection.Close();
+
+            if (rowsAffected > 0)
+            {
+                var statuscode = new
+                {
+                    responsestatus = 201,
+                    responsemessage = "person added successfully",
+                    data = person
+                };
+                return Ok(statuscode);
+            }
+            else 
+            {
+                return StatusCode(500 , new
+                {
+                    responsestatus = 500,
+                    responsemessage = "error creating person",
+                });
+            
+            }
+         
+        }
+
+
+        [HttpPut("{id}")]
+
+        public IActionResult UpdatePerson(int id, [FromBody] Person person)
+        {
+            using var command = _dbConnection.CreateCommand();
+            command.CommandText = "UPDATE details SET Name = @Name, age = @age, salary = @salary, rent = @rent, city = @city WHERE Id = @Id";
+
+            var idParam = command.CreateParameter();
+            idParam.ParameterName = "@Id";
+            idParam.Value = id;
+            command.Parameters.Add(idParam);
+
+            var nameParam = command.CreateParameter();
+            nameParam.ParameterName = "@Name";
+            nameParam.Value = person.Name;
+            command.Parameters.Add(nameParam);
+
+            var ageParam = command.CreateParameter();
+            ageParam.ParameterName = "@age";
+            ageParam.Value = person.age;
+            command.Parameters.Add(ageParam);
+
+
+            var salaryParam = command.CreateParameter();
+            salaryParam.ParameterName = "@salary";
+            salaryParam.Value = person.salary;
+            command.Parameters.Add(salaryParam);
+
+            var rentParam = command.CreateParameter();
+            rentParam.ParameterName = "@rent";
+            rentParam.Value = person.rent;
+            command.Parameters.Add(rentParam);
+
+
+            var cityParam = command.CreateParameter();
+            cityParam.ParameterName = "@city";
+            cityParam.Value = person.city;
+            command.Parameters.Add(cityParam);
+
+            _dbConnection.Open();
+            var rowsAffected = command.ExecuteNonQuery();
+            _dbConnection.Close();
+
+            if (rowsAffected > 0)
+            {
+                var statuscode = new
+                {
+                    responsestatus = 201,
+                    responsemessage = "person updated successfully",
+                    data = person
+                };
+                return Ok(statuscode);
+            }
+            return NotFound("not found");
+        }
+
+
+
+
+        [HttpDelete("{id}")]
+        public IActionResult DeletePerson(int id)
+        {
+            using var command = _dbConnection.CreateCommand();
+            command.CommandText = "DELETE FROM details WHERE Id = @Id";
+            var idParam = command.CreateParameter();
+            idParam.ParameterName ="@Id";
+            idParam.Value = id;
+            command.Parameters.Add(idParam);
+
+            _dbConnection.Open();
+            var rowsAffected = command.ExecuteNonQuery();
+            _dbConnection.Close();
+
+            if (rowsAffected > 0)
+            {
+                var statuscode = new
+                {
+                    responsestatus = 200,
+                    responsemessage = "person deleted successfully",
+                    deleted = id
+                };
+                return Ok(statuscode);
+            }
+            return NotFound("not found");
+        }
+
+
+
+
+    }
+}
